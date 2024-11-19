@@ -13,13 +13,13 @@ class Model:
         right = 400
         linhas_agrupadas = []
         # Decodifica a string base64
-        pdf_data = base64.b64decode(value)
-        pdf_file = io.BytesIO(pdf_data)  # Cria um objeto BytesIO a partir dos dados decodificados
+        #pdf_data = base64.b64decode(value)
+        #pdf_file = io.BytesIO(pdf_data)  # Cria um objeto BytesIO a partir dos dados decodificados
 
         # Usa o tabula para extrair as tabelas do PDF
         # tabula.read_pdf retorna uma lista de DataFrames
         try:
-            tabelas = tabula.read_pdf(pdf_file, pages='all', multiple_tables=True, guess=False, lattice=True, area=[top, left, bottom, right])
+            tabelas = tabula.read_pdf(value, pages='all', multiple_tables=True, guess=False, lattice=True, area=[10, 50, 850, 560])
             columnValue = [i for i in tabelas[0].columns]
             tabelasC = self.putTables(columnValue, tabelas)
             
@@ -62,23 +62,41 @@ class Model:
 
         
         for col in columns_to_format:
-            if value=='Lote':
-                df[col] = df[col].apply(lambda x: '{:05.0f}'.format(x) if pd.notnull(x) and isinstance(x, (float, int)) else x)
-            else:
-                df[col] = df[col].apply(lambda x: '{:04.0f}'.format(x) if pd.notnull(x) and isinstance(x, (float, int)) else x)
+            if col in df.columns:  # Verifica se a coluna existe no DataFrame
+                if value=='Lote':
+                    df[col] = df[col].apply(lambda x: '{:05.0f}'.format(x) if pd.notnull(x) and isinstance(x, (float, int)) else x)
+                else:
+                    df[col] = df[col].apply(lambda x: '{:04.0f}'.format(x) if pd.notnull(x) and isinstance(x, (float, int)) else x) 
 
+            else:
+                return df
         return df
 
 
     def putTables(self, coluns, tabelas):
-        tabelas = tabelas
+        tabelas_filtradas = []
         for i in tabelas:
+            if i.shape[1] == 1:  # Verifica se a tabela tem apenas uma coluna
+                continue  # Ignora essa tabela se tiver apenas uma coluna
+            
+            # Ajuste o número de colunas do DataFrame para corresponder ao número de colunas na lista `coluns`
             if len(i.columns) == len(coluns):
-                i.columns = coluns  # Assign the new column names
+                i.columns = coluns  # Atribui diretamente os nomes das colunas
             elif len(i.columns) < len(coluns):
-                # If there are fewer columns, pad the list with empty strings or some default value
-                i.columns = coluns[:len(i.columns)] + [''] * (len(coluns) - len(i.columns))
+                # Adiciona colunas extras com valores vazios, para igualar o comprimento
+                i = i.reindex(columns=range(len(coluns))).fillna('')  # Adiciona colunas vazias
+                i.columns = coluns  # Define os nomes das colunas
             else:
-                # If there are more columns, truncate the list to match
-                i.columns = coluns[:len(i.columns)]
-        return tabelas
+                # Trunca as colunas extras para que correspondam ao número de colunas em `coluns`
+                i = i.iloc[:, :len(coluns)]  # Seleciona apenas o número necessário de colunas
+                i.columns = coluns
+            
+            tabelas_filtradas.append(i)  # Adiciona a tabela processada à lista final
+        
+        return tabelas_filtradas
+    
+
+if __name__ == '__main__':
+    sa = '6269.pdf'
+
+    da = Model().lerpdf(sa)
