@@ -3,7 +3,7 @@ import io
 import tabula
 import pandas as pd
 from IPython.display import display
-from PyPDF2 import PdfReader
+#from PyPDF2 import PdfReader
 
 class Model:
     def lerpdf(self, value):
@@ -28,10 +28,13 @@ class Model:
             df = self.convert('Ag.\rorigem',df)
             i = 0          
             while i < len(df) - 1:   # Não precisa verificar a última linha
-                linha_atual = df.iloc[i].values.tolist()   
-                proximo = df.iloc[i+1].values.tolist()   
+                linha_atual = df.iloc[i].values.tolist()  
+                linha_atualDt = self.is_date(linha_atual[0]) 
                 
-                if  isinstance(linha_atual[0], str)  and pd.isna(proximo[0]):
+                proximo = df.iloc[i+1].values.tolist()   
+                proximoDt = self.is_date(proximo[0]) 
+                
+                if  linha_atualDt ==True and proximoDt ==False or pd.isna(proximo[0]):
                     stringProximo = [i for i in proximo if isinstance(i, str)]
                     stringAtual = str(linha_atual[2])
                     contatenarValor = ' '.join([stringAtual, stringProximo[0]])
@@ -54,6 +57,16 @@ class Model:
             print(f"Ocorreu um erro ao tentar extrair as tabelas: {e}")
             return None
 
+
+    def is_date(self, value):
+        try:
+            if pd.isna(value):
+                return False
+            # Tentativa de converter a string para data no formato DD/MM/YYYY
+            pd.to_datetime(value, format='%d/%m/%Y', errors='raise')
+            return True
+        except (ValueError, TypeError):   
+            return False 
 
     def convert(self, value, df):
         df =df
